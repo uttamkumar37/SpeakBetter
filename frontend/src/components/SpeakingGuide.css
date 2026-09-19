@@ -1,0 +1,81 @@
+.speaking-guide {
+	background: linear-gradient(135deg, var(--color-primary-soft), #faf5ff);
+	border: 1px solid #e0e7ff;
+	border-radius: var(--radius-lg);
+	padding: 1.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	width: 100%;
+}
+
+.speaking-guide-eyebrow {
+	margin: 0 0 0.15rem;
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--color-primary);
+}
+
+.speaking-guide-header h3 {
+	margin: 0;
+	font-size: 1.15rem;
+}
+
+.speaking-guide-steps {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.speaking-guide-step {
+	display: flex;
+	gap: 0.9rem;
+	padding-bottom: 0.9rem;
+}
+
+.speaking-guide-step-marker {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.speaking-guide-step-number {
+	flex-shrink: 0;
+	width: 1.9rem;
+	height: 1.9rem;
+	border-radius: 999px;
+	background: var(--color-primary);
+	color: #fff;
+	font-weight: 700;
+	font-size: 0.9rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: var(--shadow-sm);
+}
+
+.speaking-guide-step-connector {
+	flex: 1;
+	width: 2px;
+	background: #c7d2fe;
+	margin-top: 4px;
+}
+
+.speaking-guide-step-label {
+	margin: 0.15rem 0 0.15rem;
+	font-weight: 700;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--color-primary-dark);
+}
+
+.speaking-guide-step-prompt {
+	margin: 0;
+	color: var(--color-text);
+	font-size: 0.95rem;
+}

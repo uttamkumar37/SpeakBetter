@@ -1,0 +1,27 @@
+.empty-analysis-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: 0.5rem;
+	padding: 3rem 1.5rem;
+	color: var(--color-text-muted);
+}
+
+.empty-analysis-icon {
+	font-size: 2rem;
+	color: var(--color-text-faint);
+}
+
+.empty-analysis-state h3 {
+	margin: 0;
+	color: var(--color-text);
+	font-size: 1.05rem;
+}
+
+.empty-analysis-state p {
+	margin: 0;
+	max-width: 380px;
+	font-size: 0.9rem;
+	line-height: 1.5;
+}

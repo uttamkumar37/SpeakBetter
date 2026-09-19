@@ -1,0 +1,64 @@
+.media-tab {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+	text-align: center;
+}
+
+.media-tab h3 {
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	justify-content: center;
+}
+
+.media-tab-badge {
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	background: var(--color-bg);
+	color: var(--color-text-muted);
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	padding: 0.15rem 0.6rem;
+}
+
+.media-tab-instruction {
+	margin: 0;
+	color: var(--color-text-muted);
+	font-size: 0.9rem;
+	max-width: 420px;
+}
+
+.media-tab-video {
+	width: 100%;
+	max-width: 640px;
+	border-radius: var(--radius-md);
+	background: #111827;
+	box-shadow: var(--shadow-md);
+}
+
+.media-tab-audio {
+	width: 100%;
+	max-width: 480px;
+}
+
+.focus-points {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	justify-content: center;
+	margin-top: 0.25rem;
+}
+
+.focus-point {
+	background: var(--color-primary-soft);
+	color: var(--color-primary-dark);
+	border-radius: 999px;
+	padding: 0.3rem 0.85rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+}

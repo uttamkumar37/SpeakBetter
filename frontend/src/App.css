@@ -1,0 +1,19 @@
+.app-shell {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.page-shell {
+	max-width: 760px;
+	width: 100%;
+	margin: 0 auto;
+	padding: 2rem 1.25rem 4rem;
+	flex: 1;
+}
+
+@media (max-width: 480px) {
+	.page-shell {
+		padding: 1.5rem 1rem 3rem;
+	}
+}
