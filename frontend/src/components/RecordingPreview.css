@@ -1,0 +1,37 @@
+.recording-preview {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.85rem;
+	width: 100%;
+}
+
+.recording-preview h3 {
+	margin: 0;
+	font-size: 1.05rem;
+}
+
+.preview-video {
+	width: 100%;
+	max-width: 640px;
+	border-radius: var(--radius-md);
+	background: #111827;
+	box-shadow: var(--shadow-lg);
+}
+
+.preview-meta {
+	color: var(--color-text-muted);
+	font-size: 0.9rem;
+	margin: 0;
+}
+
+.preview-retake-note {
+	color: var(--color-text-faint);
+	font-size: 0.8rem;
+	margin: 0;
+}
+
+.preview-actions {
+	display: flex;
+	gap: 0.75rem;
+}

@@ -1,0 +1,60 @@
+.recording-history {
+	display: flex;
+	flex-direction: column;
+	gap: 1.1rem;
+}
+
+.recording-history h2 {
+	margin: 0;
+	font-size: 1.15rem;
+	font-weight: 700;
+}
+
+.topic-group-list {
+	display: flex;
+	flex-direction: column;
+	gap: 1.75rem;
+}
+
+.topic-group-heading {
+	margin: 0 0 0.65rem;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--color-text);
+	padding-left: 0.7rem;
+	border-left: 3px solid var(--color-primary);
+}
+
+.attempt-count {
+	font-weight: 500;
+	color: var(--color-text-muted);
+	font-size: 0.82rem;
+}
+
+.recording-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.retry-btn {
+	margin-left: 0.75rem;
+}
+
+.empty-history-state {
+	background: var(--color-surface);
+	border: 1px dashed var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: 2rem 1.5rem;
+	text-align: center;
+}
+
+.empty-history-state p:first-child {
+	margin: 0 0 0.3rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.empty-history-state .recorder-hint {
+	margin: 0;
+}

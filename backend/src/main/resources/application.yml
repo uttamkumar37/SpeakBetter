@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: communication-practice
+  datasource:
+    url: jdbc:postgresql://localhost:5432/speakbetter
+    username: ${DB_USERNAME:uttamkumar}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+
+server:
+  port: 8080
+
+app:
+  recordings:
+    storage-path: ./data/recordings
+    retention-days: 30
+    max-upload-size-bytes: 524288000
+    cleanup-cron: "0 0 3 * * *"
+    allowed-mime-types: video/webm,video/mp4,video/ogg
+
+logging:
+  level:
+    com.speakbetter.practice: INFO

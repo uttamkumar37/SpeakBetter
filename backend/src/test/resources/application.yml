@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/speakbetter_test
+    username: ${DB_USERNAME:uttamkumar}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  recordings:
+    storage-path: ./build/test-recordings
+    retention-days: 30
+    max-upload-size-bytes: 524288000
+    allowed-mime-types: video/webm,video/mp4,video/ogg
+    # Never actually fires during tests - cleanup is invoked directly on the
+    # service instead - but @Scheduled needs a valid cron expression to wire up.
+    cleanup-cron: "0 0 3 * * *"
