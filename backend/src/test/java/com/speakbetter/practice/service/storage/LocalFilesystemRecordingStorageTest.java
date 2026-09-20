@@ -1,4 +1,4 @@
-package com.speakbetter.practice.service;
+package com.speakbetter.practice.service.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.speakbetter.practice.config.RecordingProperties;
 import com.speakbetter.practice.exception.StorageException;
+import com.speakbetter.practice.service.StoredFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,18 +17,24 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
 
-class RecordingStorageServiceTest {
+class LocalFilesystemRecordingStorageTest {
 
 	@TempDir
 	Path tempDir;
 
-	private RecordingStorageService storageService;
+	private LocalFilesystemRecordingStorage storageService;
 
 	@BeforeEach
 	void setUp() {
 		RecordingProperties properties = new RecordingProperties();
 		properties.setStoragePath(tempDir.toString());
-		storageService = new RecordingStorageService(properties);
+		storageService = new LocalFilesystemRecordingStorage(properties);
+	}
+
+	private Resource loadResource(String key) {
+		VideoSource source = storageService.loadVideo(key);
+		assertThat(source).isInstanceOf(VideoSource.LocalFile.class);
+		return ((VideoSource.LocalFile) source).resource();
 	}
 
 	@Test
@@ -63,19 +70,19 @@ class RecordingStorageServiceTest {
 	}
 
 	@Test
-	void loadAsResourceReturnsTheStoredBytes() throws IOException {
+	void loadVideoReturnsTheStoredBytesAsALocalFile() throws IOException {
 		MockMultipartFile file = new MockMultipartFile("video", "clip.webm", "video/webm", "content-bytes".getBytes());
 		StoredFile stored = storageService.store(file, LocalDateTime.now());
 
-		Resource resource = storageService.loadAsResource(stored.relativePath());
+		Resource resource = loadResource(stored.relativePath());
 
 		assertThat(resource.exists()).isTrue();
 		assertThat(resource.contentLength()).isEqualTo("content-bytes".length());
 	}
 
 	@Test
-	void loadAsResourceThrowsStorageExceptionWhenFileIsMissing() {
-		assertThatThrownBy(() -> storageService.loadAsResource("2026/09/does-not-exist.webm"))
+	void loadVideoThrowsStorageExceptionWhenFileIsMissing() {
+		assertThatThrownBy(() -> storageService.loadVideo("2026/09/does-not-exist.webm"))
 				.isInstanceOf(StorageException.class);
 	}
 
@@ -86,7 +93,7 @@ class RecordingStorageServiceTest {
 
 		storageService.delete(stored.relativePath());
 
-		assertThatThrownBy(() -> storageService.loadAsResource(stored.relativePath()))
+		assertThatThrownBy(() -> storageService.loadVideo(stored.relativePath()))
 				.isInstanceOf(StorageException.class);
 	}
 
@@ -97,7 +104,7 @@ class RecordingStorageServiceTest {
 
 	@Test
 	void refusesToResolvePathsThatEscapeTheStorageRoot() {
-		assertThatThrownBy(() -> storageService.loadAsResource("../../../etc/passwd"))
+		assertThatThrownBy(() -> storageService.loadVideo("../../../etc/passwd"))
 				.isInstanceOf(StorageException.class);
 	}
 

@@ -5,7 +5,9 @@ import com.speakbetter.practice.dto.ReviewRequest;
 import com.speakbetter.practice.exception.StorageException;
 import com.speakbetter.practice.service.PracticeSessionService;
 import com.speakbetter.practice.service.VideoFile;
+import com.speakbetter.practice.service.storage.VideoSource;
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.core.io.Resource;
@@ -74,13 +76,28 @@ public class PracticeSessionController {
 	}
 
 	@GetMapping("/{id}/video")
-	public ResponseEntity<ResourceRegion> streamVideo(@PathVariable UUID id,
-			@RequestHeader HttpHeaders headers) {
+	public ResponseEntity<ResourceRegion> streamVideo(@PathVariable UUID id, @RequestHeader HttpHeaders headers) {
 		VideoFile video = sessionService.getVideoForStreaming(id);
-		ResourceRegion region = toResourceRegion(video.resource(), headers.getRange());
-		HttpStatus status = headers.getRange().isEmpty() ? HttpStatus.OK : HttpStatus.PARTIAL_CONTENT;
+		return switch (video.source()) {
+			case VideoSource.LocalFile local -> streamLocalFile(local.resource(), video.mimeType(), headers.getRange());
+			// Object storage serves the bytes directly (and supports Range requests
+			// itself) - the browser follows this redirect straight to R2. No body,
+			// so this bypasses message conversion entirely (keeping the method's
+			// return type as ResponseEntity<ResourceRegion> - not a wildcard - is what
+			// lets Spring's ResourceRegionHttpMessageConverter still activate for the
+			// local-file branch; it inspects the declared generic type, not the
+			// runtime value).
+			case VideoSource.RedirectUrl redirect -> ResponseEntity.status(HttpStatus.FOUND)
+					.location(URI.create(redirect.url()))
+					.build();
+		};
+	}
+
+	private ResponseEntity<ResourceRegion> streamLocalFile(Resource resource, String mimeType, List<HttpRange> ranges) {
+		ResourceRegion region = toResourceRegion(resource, ranges);
+		HttpStatus status = ranges.isEmpty() ? HttpStatus.OK : HttpStatus.PARTIAL_CONTENT;
 		return ResponseEntity.status(status)
-				.contentType(MediaType.parseMediaType(video.mimeType()))
+				.contentType(MediaType.parseMediaType(mimeType))
 				.header(HttpHeaders.ACCEPT_RANGES, "bytes")
 				.body(region);
 	}

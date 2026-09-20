@@ -10,9 +10,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Metadata for one recorded practice attempt. The actual video bytes live on disk
- * (see RecordingStorageService) - only the file path and descriptive fields are
- * persisted here.
+ * Metadata for one recorded practice attempt. The actual video bytes live in
+ * whichever RecordingStorage implementation is active - only the storage key
+ * and descriptive fields are persisted here.
  */
 @Entity
 @Table(name = "practice_sessions")
