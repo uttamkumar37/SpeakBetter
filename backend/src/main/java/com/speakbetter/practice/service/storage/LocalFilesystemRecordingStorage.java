@@ -1,25 +1,28 @@
-package com.speakbetter.practice.service;
+package com.speakbetter.practice.service.storage;
 
 import com.speakbetter.practice.config.RecordingProperties;
 import com.speakbetter.practice.exception.StorageException;
+import com.speakbetter.practice.service.StoredFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * The only class in the app that touches the filesystem for recordings. Filenames
- * are always generated here (UUID-based) - the browser-supplied filename is never
- * trusted or used to build a path, which is what keeps this safe from path traversal.
+ * Default storage backend: writes recordings to a local directory. Used for
+ * local development, where the filesystem is expected to persist across
+ * restarts. Not active under the "r2" profile (that filesystem usually isn't
+ * persistent in deployment).
  */
 @Service
-public class RecordingStorageService {
+@Profile("!r2")
+public class LocalFilesystemRecordingStorage implements RecordingStorage {
 
 	private static final Map<String, String> EXTENSIONS_BY_MIME_TYPE = Map.of(
 			"video/webm", "webm",
@@ -28,7 +31,7 @@ public class RecordingStorageService {
 
 	private final Path storageRoot;
 
-	public RecordingStorageService(RecordingProperties properties) {
+	public LocalFilesystemRecordingStorage(RecordingProperties properties) {
 		this.storageRoot = Path.of(properties.getStoragePath()).toAbsolutePath().normalize();
 		try {
 			Files.createDirectories(storageRoot);
@@ -42,6 +45,7 @@ public class RecordingStorageService {
 	 * returns the path relative to the storage root (this relative path is what gets
 	 * persisted in the database - never the absolute filesystem path).
 	 */
+	@Override
 	public StoredFile store(MultipartFile file, LocalDateTime recordedAt) {
 		String extension = extensionFor(file.getContentType());
 		String filename = UUID.randomUUID() + "." + extension;
@@ -57,14 +61,16 @@ public class RecordingStorageService {
 		return new StoredFile(relativePath, file.getSize());
 	}
 
-	public Resource loadAsResource(String relativePath) {
+	@Override
+	public VideoSource loadVideo(String relativePath) {
 		Path target = resolveWithinRoot(relativePath);
 		if (!Files.isRegularFile(target)) {
 			throw new StorageException("Recording file is missing on disk: " + relativePath);
 		}
-		return new FileSystemResource(target);
+		return new VideoSource.LocalFile(new FileSystemResource(target));
 	}
 
+	@Override
 	public void delete(String relativePath) {
 		try {
 			Files.deleteIfExists(resolveWithinRoot(relativePath));

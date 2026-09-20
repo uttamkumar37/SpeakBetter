@@ -1,7 +1,7 @@
 package com.speakbetter.practice.service;
 
-import org.springframework.core.io.Resource;
+import com.speakbetter.practice.service.storage.VideoSource;
 
-/** A recording's bytes plus the MIME type it was originally uploaded as. */
-public record VideoFile(Resource resource, String mimeType) {
+/** Where to get a recording's bytes from, plus the MIME type it was originally uploaded as. */
+public record VideoFile(VideoSource source, String mimeType) {
 }

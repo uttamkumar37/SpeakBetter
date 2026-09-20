@@ -1,0 +1,11 @@
+# Active only when SPRING_PROFILES_ACTIVE=r2 (deployment). Switches recording
+# storage from local disk to Cloudflare R2 - see CloudflareR2RecordingStorage.
+# No defaults for credentials: if this profile is active without them set,
+# startup fails loudly instead of silently misbehaving.
+app:
+  r2:
+    account-id: ${R2_ACCOUNT_ID}
+    access-key-id: ${R2_ACCESS_KEY_ID}
+    secret-access-key: ${R2_SECRET_ACCESS_KEY}
+    bucket: ${R2_BUCKET_NAME}
+    presigned-url-ttl-minutes: 15

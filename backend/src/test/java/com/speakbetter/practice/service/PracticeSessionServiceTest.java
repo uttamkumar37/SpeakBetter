@@ -17,6 +17,7 @@ import com.speakbetter.practice.entity.SessionStatus;
 import com.speakbetter.practice.exception.InvalidUploadException;
 import com.speakbetter.practice.exception.SessionNotFoundException;
 import com.speakbetter.practice.repository.PracticeSessionRepository;
+import com.speakbetter.practice.service.storage.RecordingStorage;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,7 +37,7 @@ class PracticeSessionServiceTest {
 	private PracticeSessionRepository repository;
 
 	@Mock
-	private RecordingStorageService storageService;
+	private RecordingStorage storageService;
 
 	private RecordingProperties properties;
 	private PracticeSessionService service;

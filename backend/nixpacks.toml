@@ -1,0 +1,8 @@
+# Railway build config. Tests are skipped at build time since the test suite
+# needs its own Postgres database, which isn't available during the build step -
+# tests still run normally in CI/locally via `./gradlew test`.
+[phases.build]
+cmds = ["./gradlew build -x test"]
+
+[start]
+cmd = "java -jar build/libs/communication-practice-0.0.1-SNAPSHOT.jar"

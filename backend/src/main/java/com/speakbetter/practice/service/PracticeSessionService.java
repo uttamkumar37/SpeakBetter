@@ -8,6 +8,7 @@ import com.speakbetter.practice.entity.SessionStatus;
 import com.speakbetter.practice.exception.InvalidUploadException;
 import com.speakbetter.practice.exception.SessionNotFoundException;
 import com.speakbetter.practice.repository.PracticeSessionRepository;
+import com.speakbetter.practice.service.storage.RecordingStorage;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Business logic for practice sessions. Controllers stay thin and delegate here;
- * filesystem details are delegated further to RecordingStorageService.
+ * storage details are delegated further to a RecordingStorage implementation.
  */
 @Service
 public class PracticeSessionService {
@@ -28,10 +29,10 @@ public class PracticeSessionService {
 	private static final int MAX_TOPIC_LENGTH = 255;
 
 	private final PracticeSessionRepository repository;
-	private final RecordingStorageService storageService;
+	private final RecordingStorage storageService;
 	private final RecordingProperties properties;
 
-	public PracticeSessionService(PracticeSessionRepository repository, RecordingStorageService storageService,
+	public PracticeSessionService(PracticeSessionRepository repository, RecordingStorage storageService,
 			RecordingProperties properties) {
 		this.repository = repository;
 		this.storageService = storageService;
@@ -69,7 +70,7 @@ public class PracticeSessionService {
 
 	public VideoFile getVideoForStreaming(UUID id) {
 		PracticeSession session = findActiveOrThrow(id);
-		return new VideoFile(storageService.loadAsResource(session.getFilePath()), session.getOriginalMimeType());
+		return new VideoFile(storageService.loadVideo(session.getFilePath()), session.getOriginalMimeType());
 	}
 
 	@Transactional
