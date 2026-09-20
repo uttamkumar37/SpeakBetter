@@ -1,15 +1,14 @@
-# Build stage - compiles and packages the Spring Boot app.
-FROM eclipse-temurin:21-jdk-jammy AS build
+# Build stage - compiles and packages the Spring Boot app. Uses the official
+# Gradle image (Gradle pre-installed) rather than bootstrapping via ./gradlew -
+# the wrapper's own minimal downloader hangs on connect() inside Docker
+# Desktop's networking, even though normal Gradle dependency resolution and
+# plain curl both work fine from the same container.
+FROM gradle:8.10.2-jdk21-jammy AS build
 WORKDIR /app
 
-# Copy just the build files first so dependency resolution is cached across
-# rebuilds when only application source changes.
-COPY gradlew build.gradle settings.gradle ./
-COPY gradle gradle
-RUN chmod +x gradlew
-
+COPY build.gradle settings.gradle ./
 COPY src src
-RUN ./gradlew build -x test --no-daemon
+RUN gradle build -x test --no-daemon
 
 # Runtime stage - just the JRE and the built jar, nothing else.
 FROM eclipse-temurin:21-jre-jammy
