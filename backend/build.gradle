@@ -42,3 +42,10 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// Spring Boot's Gradle plugin produces both the executable boot jar and a plain
+// (non-executable) jar by default - disabling the plain one keeps build/libs/
+// unambiguous for Docker's COPY --from=build build/libs/*.jar step.
+tasks.named('jar') {
+	enabled = false
+}
