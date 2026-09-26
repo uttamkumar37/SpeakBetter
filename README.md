@@ -32,6 +32,7 @@ Every recording is kept for at least 30 days (configurable) and then automatical
 - **Review Workspace** with tabs: Overview (duration + self-review), Original, Audio Only, Video Only, Transcript, Better Way — the last two show an honest "not available yet" state rather than fabricated AI output
 - **Self-review notes**: what went well, what needs improvement, filler word count, free-form notes
 - **Progress page** with real, computed-only stats: total attempts, time practiced, attempts per topic
+- **Interview Preparation Portal** with role/level/category filters, reviewed static questions, recording preview, interview history, review tabs, deterministic metrics, and explicit unavailable states for transcript/AI features
 - **Automatic 30-day retention + cleanup**, running on a schedule, never deleting before `expiresAt`
 - Hardened error handling (camera/mic denied, browser unsupported, upload too large, backend unreachable, database failure, missing/corrupted video file) — always a clean message, never a raw stack trace
 
@@ -50,7 +51,7 @@ SpeakBetter/
 ├── backend/                          Spring Boot API
 │   ├── src/main/java/.../
 │   │   ├── controller/                REST endpoints (thin - no business logic)
-│   │   ├── service/                   Business logic
+│   │   ├── service/                   Business logic, question catalog, deterministic interview metrics
 │   │   │   ├── storage/                RecordingStorage interface + local/R2 implementations
 │   │   │   └── analysis/               TranscriptionService/CommunicationAnalysisService
 │   │   │                                (interfaces only - unimplemented, for future AI work)
@@ -69,7 +70,7 @@ SpeakBetter/
 │   └── nixpacks.toml                  Railway build config
 ├── frontend/                          React + Vite app
 │   └── src/
-│       ├── pages/                     PracticePage, HistoryPage, ProgressPage
+│       ├── pages/                     PracticePage, InterviewPracticePage, HistoryPage, ProgressPage
 │       ├── components/                VideoRecorder, TopicSelector, SpeakingGuide, etc.
 │       │   └── review/                Review Workspace tabs
 │       ├── state/                     Shared session state (React Context)
@@ -156,6 +157,12 @@ All backend settings are environment-variable overridable — nothing needs a co
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated list of origins allowed to call the API |
 | `SPRING_PROFILES_ACTIVE` | *(none)* | Set to `r2` to switch video storage to Cloudflare R2 |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | *(required only when `r2` profile is active)* | Cloudflare R2 credentials |
+| `AI_TRANSCRIPTION_ENABLED` | `false` | Enables a real transcription provider only when implemented and configured |
+| `AI_TRANSCRIPTION_PROVIDER` | *(empty)* | Name of the server-side transcription provider |
+| `AI_TRANSCRIPTION_MODEL` | *(empty)* | Transcription model identifier |
+| `AI_ANALYSIS_ENABLED` | `false` | Enables a real AI interview-analysis provider only when implemented and configured |
+| `AI_ANALYSIS_PROVIDER` | *(empty)* | Name of the server-side AI analysis provider |
+| `AI_ANALYSIS_MODEL` | *(empty)* | AI analysis model identifier |
 
 Recording behavior lives in `backend/src/main/resources/application.yml` under `app.recordings`:
 
@@ -182,6 +189,20 @@ Frontend: `VITE_API_BASE_URL` (build-time env var) sets the backend URL; default
 | `PUT` | `/api/practice-sessions/{id}/review` | Set self-review fields (`wentWell`, `needsImprovement`, `fillerWordCount`, `notes`) |
 | `DELETE` | `/api/practice-sessions/{id}` | Delete a recording (file + metadata) |
 
+Interview endpoints:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/interview-questions` | List active interview questions; optional `role`, `level`, `category` filters |
+| `GET` | `/api/interview-questions/{id}` | Get one interview question |
+| `POST` | `/api/interview-sessions` | Create an interview attempt before recording upload |
+| `POST` | `/api/interview-sessions/{id}/recording` | Upload the confirmed recording (`multipart/form-data`: `video`, `durationSeconds`) |
+| `GET` | `/api/interview-sessions` | List interview attempts; optional role/level/category/question filters |
+| `GET` | `/api/interview-sessions/{id}` | Get one interview attempt, question context, statuses, and deterministic metrics |
+| `GET` | `/api/interview-sessions/{id}/video` | Stream the interview recording |
+| `PUT` | `/api/interview-sessions/{id}/review` | Save self-review fields |
+| `DELETE` | `/api/interview-sessions/{id}` | Delete interview metadata and media |
+
 ## Testing
 
 ```bash
@@ -196,6 +217,16 @@ npm test              # Vitest
 npm run build          # type-check + lint-clean + production build
 npx oxlint              # lint only
 ```
+
+If your local Postgres requires password authentication, export matching credentials before running backend tests, for example:
+
+```bash
+export SPRING_DATASOURCE_USERNAME=your_user
+export SPRING_DATASOURCE_PASSWORD=your_password
+./gradlew test
+```
+
+The Docker workflow configures Postgres credentials automatically.
 
 ---
 
@@ -212,5 +243,8 @@ This is entirely optional — everything above runs fully offline/locally. If yo
 
 - **`RecordingStorage`** is an interface with two implementations selected by Spring profile: `LocalFilesystemRecordingStorage` (default) and `CloudflareR2RecordingStorage` (under the `r2` profile). Local dev never touches R2-related code at all.
 - **Video serving** differs by backend: local storage streams bytes directly with Range support; R2 redirects the browser to a short-lived presigned URL, since R2 serves Range requests itself.
-- **No AI is used anywhere in this app.** The Transcript and Better Way tabs in the Review Workspace show honest "not available yet" states. `TranscriptionService` and `CommunicationAnalysisService` are unimplemented interfaces (`backend/.../service/analysis/`) — clean extension points for later, not wired into anything.
+- **No AI is required anywhere in this app.** The practice Transcript and Better Way tabs show honest "not available yet" states. Interview review exposes disabled provider statuses until real server-side providers are configured.
+- **Interview preparation groundwork is separate from speaking practice.** `InterviewSession` uses its own table and enums, while still storing recording keys compatible with `RecordingStorage`. Transcript and analysis fields have explicit statuses, so the app can say "not configured" or "pending" without inventing feedback.
+- **Interview metrics are deterministic.** Duration target bands use recorded duration only. Word count, words per minute, filler words, and STAR indicators require a real transcript; when no transcript exists, the API returns transcript-required states instead of zeros or guesses.
+- **Optional providers are disabled by default.** `AI_TRANSCRIPTION_ENABLED` and `AI_ANALYSIS_ENABLED` default to `false`; the disabled providers return explicit unavailable results and never fake transcript or AI feedback. Do not commit provider API keys.
 - **Retention is enforced by one SQL query**: the cleanup job only ever selects sessions where `expires_at < now()`, so it's structurally impossible for it to delete something early.

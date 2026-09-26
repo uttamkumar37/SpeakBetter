@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import type { PracticeSession } from "./types";
 
-const { listPracticeSessions, createPracticeSession } = vi.hoisted(() => ({
+const { listPracticeSessions, createPracticeSession, listInterviewSessions } = vi.hoisted(() => ({
 	listPracticeSessions: vi.fn(),
 	createPracticeSession: vi.fn(),
+	listInterviewSessions: vi.fn(),
 }));
 
 vi.mock("./api/practiceSessionsApi", () => ({
@@ -16,6 +17,17 @@ vi.mock("./api/practiceSessionsApi", () => ({
 	updateSessionReview: vi.fn(),
 	videoUrlFor: (session: PracticeSession) => `http://localhost:8080${session.videoUrl}`,
 	ApiError: class ApiError extends Error {},
+}));
+
+vi.mock("./api/interviewApi", () => ({
+	listInterviewSessions,
+	listInterviewQuestions: vi.fn(),
+	createInterviewSession: vi.fn(),
+	uploadInterviewRecording: vi.fn(),
+	getInterviewSession: vi.fn(),
+	updateInterviewReview: vi.fn(),
+	deleteInterviewSession: vi.fn(),
+	interviewVideoUrlFor: (session: { videoUrl: string | null }) => session.videoUrl ? `http://localhost:8080${session.videoUrl}` : null,
 }));
 
 /** Minimal stand-in for the real MediaRecorder - just enough to drive the recorder's state machine. */
@@ -79,6 +91,7 @@ beforeEach(() => {
 	HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
 	HTMLMediaElement.prototype.pause = vi.fn();
 	listPracticeSessions.mockResolvedValue([]);
+	listInterviewSessions.mockResolvedValue([]);
 });
 
 afterEach(() => {
