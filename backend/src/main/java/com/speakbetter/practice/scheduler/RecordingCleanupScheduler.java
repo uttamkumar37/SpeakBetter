@@ -1,6 +1,7 @@
 package com.speakbetter.practice.scheduler;
 
 import com.speakbetter.practice.service.PracticeSessionService;
+import com.speakbetter.practice.service.InterviewSessionService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,13 +16,16 @@ import org.springframework.stereotype.Component;
 public class RecordingCleanupScheduler {
 
 	private final PracticeSessionService practiceSessionService;
+	private final InterviewSessionService interviewSessionService;
 
-	public RecordingCleanupScheduler(PracticeSessionService practiceSessionService) {
+	public RecordingCleanupScheduler(PracticeSessionService practiceSessionService, InterviewSessionService interviewSessionService) {
 		this.practiceSessionService = practiceSessionService;
+		this.interviewSessionService = interviewSessionService;
 	}
 
 	@Scheduled(cron = "${app.recordings.cleanup-cron}")
 	public void cleanupExpiredRecordings() {
 		practiceSessionService.cleanupExpiredSessions();
+		interviewSessionService.cleanupExpiredSessions();
 	}
 }

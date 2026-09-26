@@ -3,6 +3,7 @@ import "./NavBar.css";
 
 const LINKS = [
 	{ to: "/practice", label: "Practice" },
+	{ to: "/interview", label: "Interview" },
 	{ to: "/history", label: "History" },
 	{ to: "/progress", label: "Progress" },
 ];

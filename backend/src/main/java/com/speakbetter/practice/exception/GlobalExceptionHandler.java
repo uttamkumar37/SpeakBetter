@@ -28,8 +28,18 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.NOT_FOUND, ex.getMessage());
 	}
 
+	@ExceptionHandler({ InterviewQuestionNotFoundException.class, InterviewSessionNotFoundException.class })
+	public ResponseEntity<ErrorResponse> handleInterviewNotFound(RuntimeException ex) {
+		return build(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
 	@ExceptionHandler(InvalidUploadException.class)
 	public ResponseEntity<ErrorResponse> handleInvalidUpload(InvalidUploadException ex) {
+		return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+	}
+
+	@ExceptionHandler(InvalidInterviewSessionException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidInterviewSession(InvalidInterviewSessionException ex) {
 		return build(HttpStatus.BAD_REQUEST, ex.getMessage());
 	}
 

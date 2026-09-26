@@ -1,0 +1,122 @@
+package com.speakbetter.practice.controller;
+
+import com.speakbetter.practice.dto.CreateInterviewSessionRequest;
+import com.speakbetter.practice.dto.InterviewSessionResponse;
+import com.speakbetter.practice.dto.ReviewRequest;
+import com.speakbetter.practice.entity.InterviewCategory;
+import com.speakbetter.practice.entity.InterviewLevel;
+import com.speakbetter.practice.entity.InterviewRole;
+import com.speakbetter.practice.exception.StorageException;
+import com.speakbetter.practice.service.InterviewSessionService;
+import com.speakbetter.practice.service.VideoFile;
+import com.speakbetter.practice.service.storage.VideoSource;
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.ResourceRegion;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+@RestController
+@RequestMapping("/api/interview-sessions")
+public class InterviewSessionController {
+
+	private static final long DEFAULT_CHUNK_SIZE = 1024 * 1024;
+
+	private final InterviewSessionService sessionService;
+
+	public InterviewSessionController(InterviewSessionService sessionService) {
+		this.sessionService = sessionService;
+	}
+
+	@PostMapping
+	public ResponseEntity<InterviewSessionResponse> create(@RequestBody CreateInterviewSessionRequest request) {
+		InterviewSessionResponse response = sessionService.createSession(request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@PostMapping("/{id}/recording")
+	public InterviewSessionResponse uploadRecording(
+			@PathVariable UUID id,
+			@RequestParam("video") MultipartFile video,
+			@RequestParam("durationSeconds") int durationSeconds) {
+		return sessionService.uploadRecording(id, video, durationSeconds);
+	}
+
+	@GetMapping
+	public List<InterviewSessionResponse> list(
+			@RequestParam(required = false) InterviewRole role,
+			@RequestParam(required = false) InterviewLevel level,
+			@RequestParam(required = false) InterviewCategory category,
+			@RequestParam(required = false) String questionId) {
+		return sessionService.listSessions(role, level, category, questionId);
+	}
+
+	@GetMapping("/{id}")
+	public InterviewSessionResponse get(@PathVariable UUID id) {
+		return sessionService.getSession(id);
+	}
+
+	@PutMapping("/{id}/review")
+	public InterviewSessionResponse updateReview(@PathVariable UUID id, @RequestBody ReviewRequest request) {
+		return sessionService.updateReview(id, request);
+	}
+
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> delete(@PathVariable UUID id) {
+		sessionService.deleteSession(id);
+		return ResponseEntity.noContent().build();
+	}
+
+	@GetMapping("/{id}/video")
+	public ResponseEntity<ResourceRegion> streamVideo(@PathVariable UUID id, @RequestHeader HttpHeaders headers) {
+		VideoFile video = sessionService.getVideoForStreaming(id);
+		return switch (video.source()) {
+			case VideoSource.LocalFile local -> streamLocalFile(local.resource(), video.mimeType(), headers.getRange());
+			case VideoSource.RedirectUrl redirect -> ResponseEntity.status(HttpStatus.FOUND)
+					.location(URI.create(redirect.url()))
+					.build();
+		};
+	}
+
+	private ResponseEntity<ResourceRegion> streamLocalFile(Resource resource, String mimeType, List<HttpRange> ranges) {
+		ResourceRegion region = toResourceRegion(resource, ranges);
+		HttpStatus status = ranges.isEmpty() ? HttpStatus.OK : HttpStatus.PARTIAL_CONTENT;
+		return ResponseEntity.status(status)
+				.contentType(MediaType.parseMediaType(mimeType))
+				.header(HttpHeaders.ACCEPT_RANGES, "bytes")
+				.body(region);
+	}
+
+	private ResourceRegion toResourceRegion(Resource resource, List<HttpRange> ranges) {
+		try {
+			long contentLength = resource.contentLength();
+			if (ranges.isEmpty()) {
+				return new ResourceRegion(resource, 0, contentLength);
+			}
+			HttpRange range = ranges.get(0);
+			long start = range.getRangeStart(contentLength);
+			long end = range.getRangeEnd(contentLength);
+			long rangeLength = Math.min(DEFAULT_CHUNK_SIZE, end - start + 1);
+			return new ResourceRegion(resource, start, rangeLength);
+		} catch (IOException e) {
+			throw new StorageException("Failed to read interview recording for playback", e);
+		}
+	}
+}
