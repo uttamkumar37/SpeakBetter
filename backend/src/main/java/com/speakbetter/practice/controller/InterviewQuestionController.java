@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/interview-questions")
+@RequestMapping("/api/interview-questions")  //Interview Controller
 public class InterviewQuestionController {
 
 	private final InterviewQuestionService questionService;
