@@ -47,7 +47,13 @@ class FakeMediaRecorder {
 }
 
 function fakeStream() {
-	return { getTracks: () => [{ stop: vi.fn() }] };
+	const videoTrack = { stop: vi.fn(), readyState: "live" };
+	const audioTrack = { stop: vi.fn(), readyState: "live" };
+	return {
+		getTracks: () => [videoTrack, audioTrack],
+		getVideoTracks: () => [videoTrack],
+		getAudioTracks: () => [audioTrack],
+	};
 }
 
 beforeEach(() => {
@@ -58,7 +64,12 @@ beforeEach(() => {
 	vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
 	Object.defineProperty(navigator, "mediaDevices", {
 		configurable: true,
-		value: { getUserMedia: vi.fn().mockResolvedValue(fakeStream()) },
+		value: {
+			getUserMedia: vi.fn().mockResolvedValue(fakeStream()),
+			enumerateDevices: vi.fn().mockResolvedValue([]),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		},
 	});
 	if (!("createObjectURL" in URL)) {
 		Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn() });
@@ -95,12 +106,16 @@ describe("full practice workflow", () => {
 		render(<App />);
 
 		// Home
-		await screen.findByText(/speak with more clarity and confidence/i);
-		await user.click(screen.getByRole("button", { name: "Start New Practice" }));
+		await screen.findByText(/become a clearer, more confident communicator/i);
+		await user.click(screen.getByRole("button", { name: "Browse practice types" }));
 
 		// Topic selection
 		await screen.findByText(/what would you like to practice/i);
 		await user.click(screen.getByRole("button", { name: "Daily Stand-up" }));
+
+		// Preparation
+		await screen.findByRole("heading", { name: "Daily Stand-up" });
+		await user.click(screen.getByRole("button", { name: "Start Recording" }));
 
 		// Record stage: camera auto-requested, guide shown, then ready to record
 		await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ video: true, audio: true }));
@@ -129,7 +144,7 @@ describe("full practice workflow", () => {
 
 		// Done returns to Home
 		await user.click(screen.getByRole("button", { name: "Done" }));
-		await screen.findByText(/speak with more clarity and confidence/i);
+		await screen.findByText(/become a clearer, more confident communicator/i);
 	});
 
 	it("shows a clean error when the camera/microphone is unavailable", async () => {
@@ -139,8 +154,9 @@ describe("full practice workflow", () => {
 		);
 
 		render(<App />);
-		await screen.findByText(/speak with more clarity and confidence/i);
+		await screen.findByText(/become a clearer, more confident communicator/i);
 		await user.click(screen.getByRole("button", { name: "Interview Answer" }));
+		await user.click(screen.getByRole("button", { name: "Start Recording" }));
 
 		expect(await screen.findByText(/camera and microphone access was denied/i)).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();

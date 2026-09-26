@@ -1,6 +1,7 @@
 import { useSessions } from "../state/useSessions";
 import { formatTotalDuration } from "../utils/format";
 import { groupByTopic } from "../utils/groupByTopic";
+import { analyzeSession, averageScore, currentStreak, quickImprovementInsight, sessionsThisWeek } from "../utils/sessionInsights";
 import "./ProgressPage.css";
 
 export function ProgressPage() {
@@ -26,6 +27,8 @@ export function ProgressPage() {
 	const totalSeconds = sessions.reduce((sum, s) => sum + s.durationSeconds, 0);
 	const topicGroups = groupByTopic(sessions).sort((a, b) => b.attempts.length - a.attempts.length);
 	const maxAttempts = Math.max(...topicGroups.map((g) => g.attempts.length));
+	const score = averageScore(sessions);
+	const scoredSessions = sessions.filter((session) => analyzeSession(session).score !== null);
 
 	return (
 		<div className="progress-page">
@@ -42,7 +45,21 @@ export function ProgressPage() {
 					<span className="progress-stat-value">{topicGroups.length}</span>
 					<span className="progress-stat-label">Topics practiced</span>
 				</div>
+				<div className="progress-stat-card">
+					<span className="progress-stat-value">{sessionsThisWeek(sessions)}</span>
+					<span className="progress-stat-label">Sessions this week</span>
+				</div>
+				<div className="progress-stat-card">
+					<span className="progress-stat-value">{currentStreak(sessions)}</span>
+					<span className="progress-stat-label">Current streak</span>
+				</div>
+				<div className="progress-stat-card">
+					<span className="progress-stat-value">{score ?? "--"}</span>
+					<span className="progress-stat-label">Average heuristic score</span>
+				</div>
 			</div>
+
+			<div className="progress-insight">{quickImprovementInsight(sessions)}</div>
 
 			<div className="progress-breakdown">
 				<h2>Practice by topic</h2>
@@ -61,6 +78,27 @@ export function ProgressPage() {
 							</span>
 						</div>
 					))}
+				</div>
+			</div>
+
+			<div className="progress-breakdown">
+				<h2>Recent scores</h2>
+				<div className="score-list">
+					{scoredSessions.slice(0, 6).map((session) => {
+						const insight = analyzeSession(session);
+						return (
+							<div className="score-row" key={session.id}>
+								<span>{session.topic}</span>
+								<div className="score-track">
+									<div className="score-fill" style={{ width: `${insight.score ?? 0}%` }} />
+								</div>
+								<strong>{insight.score ?? "--"}</strong>
+							</div>
+						);
+					})}
+					{scoredSessions.length === 0 && (
+						<p className="progress-muted">Complete a recording of at least 30 seconds to start the score trend.</p>
+					)}
 				</div>
 			</div>
 		</div>

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { SUGGESTED_TOPICS } from "../utils/topicGuides";
+import { PRACTICE_CATEGORIES } from "../utils/topicGuides";
 import "./TopicSelector.css";
 
 interface TopicSelectorProps {
@@ -41,14 +41,18 @@ export function TopicSelector({ onSelect }: TopicSelectorProps) {
 			</form>
 
 			<div className="topic-selector-grid">
-				{SUGGESTED_TOPICS.map((topic) => (
+				{PRACTICE_CATEGORIES.filter((category) => category.title !== "Custom Topic").map((category) => (
 					<button
-						key={topic}
+						key={category.title}
 						type="button"
-						className="topic-card"
-						onClick={() => onSelect(topic)}
+						className="topic-card topic-card-rich"
+						aria-label={category.title}
+						onClick={() => onSelect(category.title)}
 					>
-						{topic}
+						<i aria-hidden="true">{category.shortCode}</i>
+						<span>{category.title}</span>
+						<small>{category.description}</small>
+						<em>{category.expectedDuration}</em>
 					</button>
 				))}
 				<button type="button" className="topic-card topic-card-custom" onClick={focusCustomInput}>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ApiError, createPracticeSession } from "../api/practiceSessionsApi";
 import { PracticeHome } from "../components/PracticeHome";
+import { PracticePreparation } from "../components/PracticePreparation";
 import { RecordingPreview } from "../components/RecordingPreview";
 import { ReviewWorkspace } from "../components/review/ReviewWorkspace";
 import { SpeakingGuide } from "../components/SpeakingGuide";
@@ -11,7 +12,7 @@ import { useSessions } from "../state/useSessions";
 import type { PracticeSession, RecordingResult } from "../types";
 import "./PracticePage.css";
 
-type Stage = "home" | "topic-select" | "record";
+type Stage = "home" | "topic-select" | "prepare" | "record";
 
 interface NavigationState {
 	topic?: string;
@@ -22,7 +23,7 @@ export function PracticePage() {
 	const { addSession } = useSessions();
 	const initialTopic = (location.state as NavigationState | null)?.topic;
 
-	const [stage, setStage] = useState<Stage>(initialTopic ? "record" : "home");
+	const [stage, setStage] = useState<Stage>(initialTopic ? "prepare" : "home");
 	const [topic, setTopic] = useState(initialTopic ?? "");
 	const [guideVisible, setGuideVisible] = useState(true);
 	const [recordingResult, setRecordingResult] = useState<RecordingResult | null>(null);
@@ -36,7 +37,7 @@ export function PracticePage() {
 		setRecordingResult(null);
 		setSavedSession(null);
 		setSaveError(null);
-		setStage("record");
+		setStage("prepare");
 	}
 
 	function handleRecordingComplete(result: RecordingResult) {
@@ -70,6 +71,13 @@ export function PracticePage() {
 		setStage("home");
 	}
 
+	function handlePracticeAgain(nextTopic: string) {
+		setSavedSession(null);
+		setRecordingResult(null);
+		setTopic(nextTopic);
+		setStage("prepare");
+	}
+
 	if (stage === "home") {
 		return (
 			<PracticeHome onStartNewPractice={() => setStage("topic-select")} onSelectTopic={selectTopic} />
@@ -87,18 +95,34 @@ export function PracticePage() {
 		);
 	}
 
+	if (stage === "prepare") {
+		return (
+			<div className="practice-stage">
+				<button type="button" className="back-link" onClick={() => setStage("topic-select")}>
+					&larr; Back
+				</button>
+				<PracticePreparation
+					topic={topic}
+					onTopicChange={setTopic}
+					onStartRecording={() => setStage("record")}
+					onSkip={() => setStage("record")}
+				/>
+			</div>
+		);
+	}
+
 	// stage === "record"
 	if (savedSession) {
 		return (
 			<div className="practice-stage">
-				<ReviewWorkspace session={savedSession} onDone={handleReviewDone} />
+				<ReviewWorkspace session={savedSession} onDone={handleReviewDone} onPracticeAgain={handlePracticeAgain} />
 			</div>
 		);
 	}
 
 	return (
 		<div className="practice-stage">
-			<button type="button" className="back-link" onClick={() => setStage("home")}>
+			<button type="button" className="back-link" onClick={() => setStage("prepare")}>
 				&larr; Back
 			</button>
 

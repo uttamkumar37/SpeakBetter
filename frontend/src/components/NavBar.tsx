@@ -12,7 +12,8 @@ export function NavBar() {
 		<header className="nav-bar">
 			<div className="nav-bar-inner">
 				<NavLink to="/practice" className="nav-brand">
-					SpeakBetter
+					<span className="nav-brand-mark">SB</span>
+					<span>SpeakBetter</span>
 				</NavLink>
 				<nav className="nav-links">
 					{LINKS.map((link) => (
@@ -25,6 +26,9 @@ export function NavBar() {
 						</NavLink>
 					))}
 				</nav>
+				<div className="nav-avatar" aria-label="User initials">
+					UK
+				</div>
 			</div>
 		</header>
 	);

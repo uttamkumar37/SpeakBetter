@@ -36,6 +36,20 @@
 	font-weight: 500;
 }
 
+.progress-insight,
+.progress-breakdown {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	padding: 1.25rem;
+	box-shadow: var(--shadow-sm);
+}
+
+.progress-insight {
+	color: var(--color-text);
+	font-weight: 700;
+}
+
 .progress-breakdown h2 {
 	margin: 0 0 1rem;
 	font-size: 1.05rem;
@@ -82,9 +96,60 @@
 	white-space: nowrap;
 }
 
+.score-list {
+	display: grid;
+	gap: 0.85rem;
+}
+
+.score-row {
+	display: grid;
+	grid-template-columns: minmax(8rem, 1fr) 2fr auto;
+	align-items: center;
+	gap: 0.85rem;
+}
+
+.score-row span {
+	font-size: 0.85rem;
+	font-weight: 700;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.score-track {
+	height: 0.65rem;
+	background: var(--color-bg);
+	border-radius: 999px;
+	overflow: hidden;
+}
+
+.score-fill {
+	height: 100%;
+	background: linear-gradient(90deg, var(--color-success), var(--color-primary));
+	border-radius: 999px;
+}
+
+.score-row strong {
+	font-size: 0.9rem;
+}
+
+.progress-muted {
+	margin: 0;
+	color: var(--color-text-muted);
+	font-size: 0.9rem;
+}
+
 @media (max-width: 480px) {
 	.progress-bar-row {
 		grid-template-columns: 6.5rem 1fr auto;
 		gap: 0.5rem;
+	}
+
+	.score-row {
+		grid-template-columns: 1fr auto;
+	}
+
+	.score-track {
+		grid-column: 1 / -1;
 	}
 }
