@@ -5,15 +5,15 @@
 }
 
 .page-shell {
-	max-width: 760px;
+	max-width: 1280px;
 	width: 100%;
 	margin: 0 auto;
-	padding: 2rem 1.25rem 4rem;
+	padding: 2rem 1.5rem 4rem;
 	flex: 1;
 }
 
 @media (max-width: 480px) {
 	.page-shell {
-		padding: 1.5rem 1rem 3rem;
+		padding: 1rem 0.9rem 3rem;
 	}
 }

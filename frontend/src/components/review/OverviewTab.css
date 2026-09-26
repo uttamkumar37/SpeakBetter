@@ -20,11 +20,21 @@
 	color: var(--color-primary);
 }
 
+.snapshot-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.8rem;
+	margin-bottom: 0.85rem;
+}
+
 .snapshot-stat {
 	display: flex;
-	align-items: baseline;
-	gap: 0.5rem;
-	margin-bottom: 0.75rem;
+	flex-direction: column;
+	gap: 0.15rem;
+	background: rgba(255, 255, 255, 0.68);
+	border: 1px solid rgba(255, 255, 255, 0.85);
+	border-radius: var(--radius-sm);
+	padding: 0.85rem;
 }
 
 .snapshot-stat-value {
@@ -39,10 +49,24 @@
 }
 
 .snapshot-note {
-	margin: 0;
+	margin: 0.25rem 0 0;
 	color: var(--color-text-muted);
 	font-size: 0.85rem;
 	line-height: 1.5;
+}
+
+.snapshot-score-status {
+	margin: 0 0 0.55rem;
+	color: var(--color-text);
+	font-weight: 700;
+	font-size: 0.9rem;
+}
+
+.snapshot-methodology {
+	margin: 0.7rem 0 0;
+	color: var(--color-text-faint);
+	font-size: 0.78rem;
+	line-height: 1.45;
 }
 
 .self-review-card {
@@ -55,4 +79,10 @@
 	margin: 0;
 	font-weight: 700;
 	font-size: 0.95rem;
+}
+
+@media (max-width: 560px) {
+	.snapshot-grid {
+		grid-template-columns: 1fr;
+	}
 }

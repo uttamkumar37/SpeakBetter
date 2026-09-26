@@ -8,7 +8,10 @@ export function AudioOnlyTab({ session }: { session: PracticeSession }) {
 	return (
 		<div className="media-tab">
 			<h3>Listen to Your Voice</h3>
-			<p className="media-tab-instruction">Ignore the video and focus only on how you sound.</p>
+			<p className="media-tab-instruction">
+				Ignore the video and focus only on how you sound. Markers and transcript sync require real transcript
+				analysis, so they are not shown until that exists.
+			</p>
 			<audio src={videoUrlFor(session)} controls className="media-tab-audio" />
 			<div className="focus-points">
 				{FOCUS_POINTS.map((point) => (
