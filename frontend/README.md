@@ -1,22 +1,15 @@
 # SpeakBetter frontend
 
-React + TypeScript + Vite app. See the [project README](../README.md) for setup, configuration, and the full feature list.
-
-The Interview Portal lives at `#/interview`, with history at `#/interview/history` and review pages at `#/interview/review/:id`. It reuses the existing recorder and shows only backend-provided deterministic metrics. Transcript and AI panels intentionally show unavailable states unless real providers are configured server-side.
-
-Quick start:
+React, TypeScript and Vite. The Go API lives in `../backend` and defaults to http://localhost:8081.
 
 ```bash
-npm install
+npm ci
 npm run dev
-```
-
-Validation:
-
-```bash
 npm test
+npm run lint
 npm run build
-npx oxlint
 ```
 
-Interview progress is intentionally separate from general speaking-practice progress so totals and comparisons do not mix different practice modes.
+`VITE_API_BASE_URL` overrides the backend URL at development/build time. The root Compose build uses an empty base URL and nginx forwards `/api/` to the Go API on the same origin. The application uses HashRouter, so static hosting does not require route rewrites. Public hosting still requires protected backend/media access; local parity is not production authorization.
+
+See the root README and `docs/v2/` for environment setup, actual feature status and tests.

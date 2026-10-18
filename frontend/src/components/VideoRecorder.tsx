@@ -44,14 +44,26 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 	const timerIntervalRef = useRef<number | null>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
 	const animationFrameRef = useRef<number | null>(null);
+	const mountedRef = useRef(false);
+	const cameraRequestRef = useRef(0);
 
 	useEffect(() => {
-		requestCamera();
+		mountedRef.current = true;
+		void requestCamera();
 		navigator.mediaDevices?.addEventListener?.("devicechange", refreshDevices);
 		return () => {
+			mountedRef.current = false;
+			cameraRequestRef.current += 1;
 			navigator.mediaDevices?.removeEventListener?.("devicechange", refreshDevices);
 			stopTimer();
 			stopMicMeter();
+			const recorder = mediaRecorderRef.current;
+			mediaRecorderRef.current = null;
+			if (recorder) {
+				recorder.ondataavailable = null;
+				recorder.onstop = null;
+				if (recorder.state !== "inactive") recorder.stop();
+			}
 			stopTracks();
 		};
 		// requestCamera intentionally runs once on mount only.
@@ -77,7 +89,7 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 		}
 		void audioContextRef.current?.close();
 		audioContextRef.current = null;
-		setMicLevel(0);
+		if (mountedRef.current) setMicLevel(0);
 	}
 
 	function toggleCountdown() {
@@ -95,6 +107,7 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 			return;
 		}
 		const devices = await navigator.mediaDevices.enumerateDevices();
+		if (!mountedRef.current) return;
 		const cameras = devices.filter((device) => device.kind === "videoinput");
 		const microphones = devices.filter((device) => device.kind === "audioinput");
 		setVideoDevices(cameras);
@@ -104,6 +117,7 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 	}
 
 	async function requestCamera(videoDeviceId = selectedVideoDeviceId, audioDeviceId = selectedAudioDeviceId) {
+		const requestId = ++cameraRequestRef.current;
 		setErrorMessage(null);
 
 		if (!navigator.mediaDevices?.getUserMedia) {
@@ -132,14 +146,20 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 				video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true,
 				audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
 			});
+			if (!mountedRef.current || requestId !== cameraRequestRef.current) {
+				stream.getTracks().forEach((track) => track.stop());
+				return;
+			}
 			streamRef.current = stream;
 			if (videoRef.current) {
 				videoRef.current.srcObject = stream;
 			}
 			await refreshDevices();
+			if (!mountedRef.current || requestId !== cameraRequestRef.current) return;
 			startMicMeter(stream);
 			setPhase("ready");
 		} catch (err) {
+			if (!mountedRef.current || requestId !== cameraRequestRef.current) return;
 			stopTracks();
 			setPhase("error");
 			setErrorMessage(describeMediaError(err));
@@ -164,6 +184,7 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 		audioContextRef.current = audioContext;
 
 		function tick() {
+			if (!mountedRef.current) return;
 			analyser.getByteFrequencyData(data);
 			const average = data.reduce((sum, value) => sum + value, 0) / data.length;
 			setMicLevel(Math.min(100, Math.round((average / 128) * 100)));
@@ -205,6 +226,9 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 			}
 		};
 		recorder.onstop = () => {
+			mediaRecorderRef.current = null;
+			stopTimer();
+			if (!mountedRef.current) return;
 			const blob = new Blob(chunksRef.current, { type: mimeType });
 			stopMicMeter();
 			stopTracks();
@@ -227,7 +251,8 @@ export function VideoRecorder({ topic, onRecordingComplete }: VideoRecorderProps
 
 	function handleStop() {
 		stopTimer();
-		mediaRecorderRef.current?.stop();
+		const recorder = mediaRecorderRef.current;
+		if (recorder && recorder.state !== "inactive") recorder.stop();
 	}
 
 	const cameraReady = Boolean(streamRef.current?.getVideoTracks?.().some((track) => track.readyState === "live"));

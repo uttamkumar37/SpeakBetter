@@ -1,9 +1,4 @@
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-data/recordings/**
-!data/recordings/.gitkeep
-*.iml
-.idea/
-out/
-.DS_Store
+/bin/
+/coverage.out
+/data/
+.env

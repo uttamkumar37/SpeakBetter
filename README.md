@@ -1,250 +1,116 @@
 # SpeakBetter
 
-A personal communication-practice app: record yourself speaking on a topic, review the attempt, add a self-review, and track how you improve over time.
+A personal speaking-practice application with a Go API, PostgreSQL, and React/TypeScript frontend.
 
-**Record → Review → Improve → Repeat**
+Record → Review → Improve → Repeat.
 
-Every recording is kept for at least 30 days (configurable) and then automatically deleted by a scheduled cleanup job. Nothing about this app requires an AI provider to work — self-review is manual by design, with clean extension points left in place for adding real transcription/analysis later.
+The active branch contains one backend at `backend/`. The original application is preserved on [`backup-V0`](https://github.com/uttamkumar37/SpeakBetter/tree/backup-V0). The Go backend supports the existing practice and interview API contracts. Automatic transcription, AI sentence feedback, persistent learning plans, and Kubernetes deployment are still pending; unavailable analysis is never replaced with invented results.
 
----
+## Run locally
 
-## Contents
+With Docker Desktop running, from the repository root:
 
-- [Features](#features)
-- [Tech stack](#tech-stack)
-- [Project structure](#project-structure)
-- [Running it: option A — plain local (Gradle + npm)](#option-a--plain-local-gradle--npm)
-- [Running it: option B — Docker / Podman](#option-b--docker--podman)
-- [Configuration](#configuration)
-- [API reference](#api-reference)
-- [Testing](#testing)
-- [Deploying it live](#deploying-it-live-optional)
-- [Architecture notes](#architecture-notes)
-
----
-
-## Features
-
-- **Record** via webcam + microphone, with a live preview, optional 3-2-1 countdown, and a running timer
-- **Per-topic speaking guides** (Daily Stand-up, Interview Answer/STAR, Technical Explanation, etc.) shown before you record
-- **Preview before saving** — retake or save, nothing is uploaded until you choose to save it
-- **Practice History**, grouped by topic, so repeat attempts at the same topic sit together ("Attempt 2 of 3")
-- **Review Workspace** with tabs: Overview (duration + self-review), Original, Audio Only, Video Only, Transcript, Better Way — the last two show an honest "not available yet" state rather than fabricated AI output
-- **Self-review notes**: what went well, what needs improvement, filler word count, free-form notes
-- **Progress page** with real, computed-only stats: total attempts, time practiced, attempts per topic
-- **Interview Preparation Portal** with role/level/category filters, reviewed static questions, recording preview, interview history, review tabs, deterministic metrics, and explicit unavailable states for transcript/AI features
-- **Automatic 30-day retention + cleanup**, running on a schedule, never deleting before `expiresAt`
-- Hardened error handling (camera/mic denied, browser unsupported, upload too large, backend unreachable, database failure, missing/corrupted video file) — always a clean message, never a raw stack trace
-
-## Tech stack
-
-**Backend**: Java 21, Spring Boot 3, Gradle, PostgreSQL, Spring Data JPA, Flyway, Spring Scheduler
-**Frontend**: React 19, TypeScript, Vite, React Router, plain CSS (no UI framework), Vitest + React Testing Library
-**Storage**: local filesystem by default; a Cloudflare R2 (S3-compatible) backend is available for deployment (see [Deploying it live](#deploying-it-live-optional))
-
-No Redux, Kafka, Redis, Kubernetes, or microservices — kept deliberately simple.
-
-## Project structure
-
-```
-SpeakBetter/
-├── backend/                          Spring Boot API
-│   ├── src/main/java/.../
-│   │   ├── controller/                REST endpoints (thin - no business logic)
-│   │   ├── service/                   Business logic, question catalog, deterministic interview metrics
-│   │   │   ├── storage/                RecordingStorage interface + local/R2 implementations
-│   │   │   └── analysis/               TranscriptionService/CommunicationAnalysisService
-│   │   │                                (interfaces only - unimplemented, for future AI work)
-│   │   ├── repository/                Spring Data JPA repository
-│   │   ├── entity/                    JPA entities
-│   │   ├── dto/                       Request/response DTOs
-│   │   ├── config/                    @ConfigurationProperties, CORS
-│   │   ├── scheduler/                 30-day cleanup job
-│   │   └── exception/                 Global exception handling
-│   ├── src/main/resources/
-│   │   ├── application.yml            Default (local dev) config
-│   │   ├── application-r2.yml         R2 storage config (active under "r2" profile)
-│   │   └── db/migration/              Flyway migrations
-│   ├── src/test/                      Unit + integration tests
-│   ├── Dockerfile
-│   └── nixpacks.toml                  Railway build config
-├── frontend/                          React + Vite app
-│   └── src/
-│       ├── pages/                     PracticePage, InterviewPracticePage, HistoryPage, ProgressPage
-│       ├── components/                VideoRecorder, TopicSelector, SpeakingGuide, etc.
-│       │   └── review/                Review Workspace tabs
-│       ├── state/                     Shared session state (React Context)
-│       ├── api/                       Backend API client
-│       └── utils/                     Formatting, topic guides, grouping logic
-├── docker-compose.yml                 Postgres + backend + frontend, one command
-└── .github/workflows/                 GitHub Pages deploy workflow
-```
-
----
-
-## Option A — plain local (Gradle + npm)
-
-### Prerequisites
-- Java 21
-- PostgreSQL running locally
-- Node.js 20+
-
-### 1. Create the database (first time only)
 ```bash
-createdb speakbetter
+sh scripts/setup-v2.sh
+set -a
+. ./.env.v2
+set +a
+docker compose up --build -d
+docker compose ps
+docker compose logs -f
 ```
-The default connection assumes a local Postgres with no password (`jdbc:postgresql://localhost:5432/speakbetter`, your OS username). Override via env vars if yours differs — see [Configuration](#configuration).
 
-### 2. Run the backend
+Open **http://localhost:5173**. The API listens at **http://127.0.0.1:8081**. PostgreSQL stays inside the container network. Setup creates a private, ignored `.env.v2` with a random database password; keep and reload this file in each new terminal. To stop while retaining data:
+
+```bash
+docker compose down
+```
+
+For Podman, start the existing VM with `podman machine start`, load the same environment, and replace `docker compose` with `podman compose`. A Compose provider is required. Do not remove volumes or reuse storage from an existing installation. See [local development](docs/v2/05-local-development.md) for native Go, resource limits, R2 settings, and troubleshooting.
+
+## Implemented
+
+- Browser recording with preview, countdown, device selection, retake and save.
+- Topic guides, stand-up practice, grouped recording history and attempt comparison.
+- Original, audio-only and muted video review using the original recording.
+- Manual strengths, improvement notes, filler counts, and progress counts/time.
+- Eight reviewed interview questions with role/level/category filtering, question snapshots, interview history and self-review.
+- Local storage and a configurable private Cloudflare R2 adapter.
+- Generated storage keys, actual container-signature checks, bounded uploads, safe paths, HTTP Range/HEAD playback, deletion and configurable 30-day retention.
+- Explicit PostgreSQL migrations, health/readiness, safe structured errors, request IDs, timeouts and graceful shutdown.
+
+Audio-only capture and text practice are not yet exposed by the UI. Audio containers are accepted by the backend. Interview WPM/filler/structure metrics require a real stored transcript. The existing frontend's duration-based heuristic is retained for compatibility and must still be replaced with evidence-supported language metrics.
+
+This is currently a single-user local application. Authentication and private-media authorization must be completed before public deployment. Compose binds application ports to loopback.
+
+## Project layout
+
+```text
+backend/
+  cmd/api/              HTTP server and cleanup loop
+  cmd/migrate/          Explicit migration command
+  internal/config/      Validated environment configuration
+  internal/httpapi/     Routing, common errors and request helpers
+  internal/platform/    PostgreSQL pool and local/R2 storage
+  internal/practice/    Practice sessions and manual reviews
+  internal/interview/   Catalog, sessions and deterministic metrics
+  internal/recording/   Shared upload and streaming behavior
+  migrations/           Embedded versioned SQL
+frontend/               React, TypeScript, Vite and Vitest
+scripts/                Local environment setup
+docs/v2/                Audit, roadmap, learning guide and verification
+docker-compose.yml      Go API, migrator, frontend and PostgreSQL
+```
+
+## Native development
+
+Provide a separate empty PostgreSQL database, then:
+
 ```bash
 cd backend
-./gradlew bootRun
+export DATABASE_URL='postgres://localhost/speakbetter_v2?sslmode=disable'
+go run ./cmd/migrate
+GIN_MODE=release go run ./cmd/api
 ```
-Flyway migrates the schema automatically on startup. API is at `http://localhost:8080`.
 
-### 3. Run the frontend
+Adjust the URL for your PostgreSQL user/password. In another terminal:
+
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
-App is at `http://localhost:5173`.
 
-Open it, allow camera/microphone access, and start practicing. Recordings persist across restarts (real Postgres + real files on disk).
+The development frontend defaults to API port 8081; container builds use same-origin `/api/` proxying. Set `VITE_API_BASE_URL` at build time for other hosts.
 
----
-
-## Option B — Docker / Podman
-
-One command brings up Postgres, the backend, and the frontend together:
+## Tests
 
 ```bash
-docker compose up --build -d
-# or, if using Podman instead of Docker Desktop:
-podman compose up --build -d
-```
-
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8080`
-- Postgres: `localhost:5432` (user/password/db: `speakbetter`)
-
-Recordings are stored in a named volume (`recordings-data`), so they survive `docker compose down` / `up` — only `docker compose down -v` wipes them.
-
-```bash
-docker compose logs -f       # watch logs
-docker compose down          # stop everything, keep data
-docker compose down -v       # stop everything, delete all data
-```
-
-If you run this alongside option A, stop the plain local processes first (they'll fight over ports 5432/8080/5173):
-```bash
-lsof -ti:8080,5173 | xargs kill
-brew services stop postgresql@16   # macOS/Homebrew Postgres
-```
-
----
-
-## Configuration
-
-All backend settings are environment-variable overridable — nothing needs a code change to reconfigure.
-
-| Env var | Default | Purpose |
-|---|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/speakbetter` | Database connection |
-| `SPRING_DATASOURCE_USERNAME` (or `DB_USERNAME`) | `uttamkumar` | Database username - **override this if your local Postgres user is different** |
-| `SPRING_DATASOURCE_PASSWORD` (or `DB_PASSWORD`) | *(empty)* | Database password |
-| `PORT` | `8080` | Port the backend listens on |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated list of origins allowed to call the API |
-| `SPRING_PROFILES_ACTIVE` | *(none)* | Set to `r2` to switch video storage to Cloudflare R2 |
-| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | *(required only when `r2` profile is active)* | Cloudflare R2 credentials |
-| `AI_TRANSCRIPTION_ENABLED` | `false` | Enables a real transcription provider only when implemented and configured |
-| `AI_TRANSCRIPTION_PROVIDER` | *(empty)* | Name of the server-side transcription provider |
-| `AI_TRANSCRIPTION_MODEL` | *(empty)* | Transcription model identifier |
-| `AI_ANALYSIS_ENABLED` | `false` | Enables a real AI interview-analysis provider only when implemented and configured |
-| `AI_ANALYSIS_PROVIDER` | *(empty)* | Name of the server-side AI analysis provider |
-| `AI_ANALYSIS_MODEL` | *(empty)* | AI analysis model identifier |
-
-Recording behavior lives in `backend/src/main/resources/application.yml` under `app.recordings`:
-
-| Property | Default | Purpose |
-|---|---|---|
-| `app.recordings.storage-path` | `./data/recordings` | Local disk storage root (ignored when `r2` profile is active) |
-| `app.recordings.retention-days` | `30` | How long a recording is kept before automatic cleanup |
-| `app.recordings.max-upload-size-bytes` | `524288000` (500MB) | Max accepted upload size |
-| `app.recordings.cleanup-cron` | `0 0 3 * * *` | When the cleanup job runs (daily at 3am by default) |
-| `app.recordings.allowed-mime-types` | `video/webm,video/mp4,video/ogg` | Accepted video MIME types |
-
-Frontend: `VITE_API_BASE_URL` (build-time env var) sets the backend URL; defaults to `http://localhost:8080` for `npm run dev`.
-
----
-
-## API reference
-
-| Method | Path | Purpose |
-|---|---|---|
-| `POST` | `/api/practice-sessions` | Upload a recording (`multipart/form-data`: `video`, `topic`, `durationSeconds`) |
-| `GET` | `/api/practice-sessions` | List all recordings, newest first |
-| `GET` | `/api/practice-sessions/{id}` | Get one recording's metadata |
-| `GET` | `/api/practice-sessions/{id}/video` | Stream the video (supports HTTP Range requests for seeking) |
-| `PUT` | `/api/practice-sessions/{id}/review` | Set self-review fields (`wentWell`, `needsImprovement`, `fillerWordCount`, `notes`) |
-| `DELETE` | `/api/practice-sessions/{id}` | Delete a recording (file + metadata) |
-
-Interview endpoints:
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/api/interview-questions` | List active interview questions; optional `role`, `level`, `category` filters |
-| `GET` | `/api/interview-questions/{id}` | Get one interview question |
-| `POST` | `/api/interview-sessions` | Create an interview attempt before recording upload |
-| `POST` | `/api/interview-sessions/{id}/recording` | Upload the confirmed recording (`multipart/form-data`: `video`, `durationSeconds`) |
-| `GET` | `/api/interview-sessions` | List interview attempts; optional role/level/category/question filters |
-| `GET` | `/api/interview-sessions/{id}` | Get one interview attempt, question context, statuses, and deterministic metrics |
-| `GET` | `/api/interview-sessions/{id}/video` | Stream the interview recording |
-| `PUT` | `/api/interview-sessions/{id}/review` | Save self-review fields |
-| `DELETE` | `/api/interview-sessions/{id}` | Delete interview metadata and media |
-
-## Testing
-
-```bash
-# Backend - needs a local Postgres and a `speakbetter_test` database
 cd backend
-createdb speakbetter_test   # first time only
-./gradlew test
-
-# Frontend
-cd frontend
-npm test              # Vitest
-npm run build          # type-check + lint-clean + production build
-npx oxlint              # lint only
+go test -race ./...
+go vet ./...
+TEST_DATABASE_URL="$DATABASE_URL" go test -race -count=1 ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+cd ../frontend
+npm ci
+npm test
+npm run lint
+npm run build
 ```
 
-If your local Postgres requires password authentication, export matching credentials before running backend tests, for example:
+Database integration tests create/drop only randomly named disposable databases and need CREATEDB permission on an isolated server. They explicitly skip when `TEST_DATABASE_URL` is absent. Never use production credentials for them.
 
-```bash
-export SPRING_DATASOURCE_USERNAME=your_user
-export SPRING_DATASOURCE_PASSWORD=your_password
-./gradlew test
-```
+## Configuration and API
 
-The Docker workflow configures Postgres credentials automatically.
+Important environment variables: `DATABASE_URL`, `HOST` (127.0.0.1), `PORT` (8081), `CORS_ALLOWED_ORIGINS` (http://localhost:5173), `RECORDING_STORAGE_PATH`, `RECORDING_RETENTION_DAYS` (30), and `MAX_UPLOAD_BYTES` (500 MiB). Set `STORAGE_BACKEND=r2`, `R2_ENDPOINT`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` for a private R2 bucket. Secrets belong in environment variables or private ignored files.
 
----
+| Resource | Routes |
+|---|---|
+| Health | GET `/api/v2/health/live`, `/api/v2/health/ready` |
+| Practice | POST/GET `/api/practice-sessions`; GET/DELETE `/{id}`; PUT `/{id}/review`; GET/HEAD `/{id}/video` |
+| Questions | GET `/api/interview-questions` with optional role/level/category; GET `/{id}` |
+| Interviews | POST/GET `/api/interview-sessions`; GET/DELETE `/{id}`; POST `/{id}/recording`; PUT `/{id}/review`; GET/HEAD `/{id}/video` |
 
-## Deploying it live (optional)
+Practice uploads use multipart `video`, `topic`, `durationSeconds`. Interview creation uses role/level/category/questionId JSON; its confirmed recording is uploaded separately. Collections retain JSON arrays and relative media URLs. Review fields are nullable and PUT replaces them. Current retention removes expired media **and session metadata**; separate long-term learning history is a future stage.
 
-This is entirely optional — everything above runs fully offline/locally. If you want a live version (e.g. at a custom domain), the codebase is already prepared for it:
-
-1. **Cloudflare R2** (free, 10GB) — create a bucket + API token, gives you `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`. Needed because most free-tier hosts don't offer a persistent disk.
-2. **Railway** (or similar) — deploy `backend/`, add a Postgres plugin, set `SPRING_PROFILES_ACTIVE=r2` plus the R2 and datasource env vars from [Configuration](#configuration).
-3. **GitHub Pages** — the workflow at `.github/workflows/deploy-frontend.yml` builds and deploys `frontend/` automatically on push to `main`. Set the `VITE_API_BASE_URL` repository variable to your Railway URL first.
-4. **DNS** — add a CNAME for your custom domain pointing at `<your-github-username>.github.io`, then set it as the custom domain under repo Settings → Pages.
-
-## Architecture notes
-
-- **`RecordingStorage`** is an interface with two implementations selected by Spring profile: `LocalFilesystemRecordingStorage` (default) and `CloudflareR2RecordingStorage` (under the `r2` profile). Local dev never touches R2-related code at all.
-- **Video serving** differs by backend: local storage streams bytes directly with Range support; R2 redirects the browser to a short-lived presigned URL, since R2 serves Range requests itself.
-- **No AI is required anywhere in this app.** The practice Transcript and Better Way tabs show honest "not available yet" states. Interview review exposes disabled provider statuses until real server-side providers are configured.
-- **Interview preparation groundwork is separate from speaking practice.** `InterviewSession` uses its own table and enums, while still storing recording keys compatible with `RecordingStorage`. Transcript and analysis fields have explicit statuses, so the app can say "not configured" or "pending" without inventing feedback.
-- **Interview metrics are deterministic.** Duration target bands use recorded duration only. Word count, words per minute, filler words, and STAR indicators require a real transcript; when no transcript exists, the API returns transcript-required states instead of zeros or guesses.
-- **Optional providers are disabled by default.** `AI_TRANSCRIPTION_ENABLED` and `AI_ANALYSIS_ENABLED` default to `false`; the disabled providers return explicit unavailable results and never fake transcript or AI feedback. Do not commit provider API keys.
-- **Retention is enforced by one SQL query**: the cleanup job only ever selects sessions where `expires_at < now()`, so it's structurally impossible for it to delete something early.
+See the [implementation audit](docs/v2/01-existing-system-audit.md), [roadmap](docs/v2/02-migration-plan.md), [Go learning guide](docs/v2/03-go-learning-guide.md), [verification log](docs/v2/04-delivery-log.md), and [backup/rollback record](docs/v2/00-backup-and-rollback.md).

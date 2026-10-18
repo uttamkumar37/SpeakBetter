@@ -1,0 +1,133 @@
+name: V2 verification
+
+on:
+  push:
+    branches: [main, feature/v2-go-migration]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_DB: speakbetter_v2
+          POSTGRES_USER: speakbetter
+          POSTGRES_PASSWORD: ci-test-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U speakbetter -d speakbetter_v2"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://speakbetter:ci-test-only@localhost:5432/speakbetter_v2?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Formatting
+        run: |
+          gofmt -l cmd internal migrations > /tmp/gofmt-files
+          if test -s /tmp/gofmt-files; then
+            cat /tmp/gofmt-files
+            exit 1
+          fi
+      - run: go mod verify
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+      - run: go build ./cmd/...
+      - name: Reachable dependency vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.1
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=high
+
+  containers:
+    needs: [go, frontend]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.1
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install browser test dependencies
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Build and start the local stack
+        run: |
+          sh scripts/setup-v2.sh
+          set -a
+          . ./.env.v2
+          set +a
+          docker compose up --build -d
+          python3 - <<'PY'
+          import time
+          import urllib.request
+          for attempt in range(60):
+              try:
+                  with urllib.request.urlopen('http://127.0.0.1:5173/api/v2/health/ready', timeout=2) as response:
+                      if response.status == 200:
+                          break
+              except OSError:
+                  time.sleep(1)
+          else:
+              raise SystemExit('Application did not become ready')
+          PY
+          python3 scripts/smoke.py
+      - name: Browser journeys and accessibility
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: http://127.0.0.1:5173
+        run: npm run test:e2e
+      - name: Browser test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Container logs and cleanup
+        if: always()
+        run: |
+          if test -f .env.v2; then
+            set -a
+            . ./.env.v2
+            set +a
+            docker compose logs --no-color
+            docker compose down
+          fi

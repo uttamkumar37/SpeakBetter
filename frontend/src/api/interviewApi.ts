@@ -10,7 +10,7 @@ import type {
 import { ApiError } from "./practiceSessionsApi";
 import { baseMimeType } from "../utils/mediaRecorder";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8081";
 
 const EXTENSIONS_BY_MIME_TYPE: Record<string, string> = {
 	"video/webm": "webm",

@@ -15,7 +15,7 @@ vi.mock("./api/practiceSessionsApi", () => ({
 	createPracticeSession,
 	deletePracticeSession: vi.fn(),
 	updateSessionReview: vi.fn(),
-	videoUrlFor: (session: PracticeSession) => `http://localhost:8080${session.videoUrl}`,
+	videoUrlFor: (session: PracticeSession) => `http://localhost:8081${session.videoUrl}`,
 	ApiError: class ApiError extends Error {},
 }));
 
@@ -27,7 +27,7 @@ vi.mock("./api/interviewApi", () => ({
 	getInterviewSession: vi.fn(),
 	updateInterviewReview: vi.fn(),
 	deleteInterviewSession: vi.fn(),
-	interviewVideoUrlFor: (session: { videoUrl: string | null }) => session.videoUrl ? `http://localhost:8080${session.videoUrl}` : null,
+	interviewVideoUrlFor: (session: { videoUrl: string | null }) => session.videoUrl ? `http://localhost:8081${session.videoUrl}` : null,
 }));
 
 /** Minimal stand-in for the real MediaRecorder - just enough to drive the recorder's state machine. */

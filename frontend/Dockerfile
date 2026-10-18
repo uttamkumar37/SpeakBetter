@@ -1,19 +1,17 @@
-# Build stage - compiles the Vite app.
-FROM node:20-alpine AS build
+FROM node:24.13.1-alpine AS build
 WORKDIR /app
-
 COPY package.json package-lock.json ./
 RUN npm ci
-
 COPY . .
-# Baked in at build time - the app is a static SPA using HashRouter, so there's
-# no server-side routing to configure, just a plain static file server below.
-ARG VITE_API_BASE_URL=http://localhost:8080
+ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
-# Runtime stage - just a static file server for the built assets.
-FROM nginx:alpine
+FROM nginx:1.29-alpine
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-
-EXPOSE 80
+USER 10001:0
+EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
