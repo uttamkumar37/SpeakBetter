@@ -206,7 +206,7 @@ export function InterviewPracticePage() {
 			)}
 			{!loading && !error && questions.length > 0 && (
 				<div className="interview-workspace">
-					<div className="interview-question-list" role="listbox" aria-label="Interview questions">
+					<div className="interview-question-list" role="group" aria-label="Interview questions">
 						{questions.map((question) => (
 							<button
 								key={question.id}

@@ -1,0 +1,114 @@
+[
+  {
+    "id": "behavioral-general-entry-ownership",
+    "role": "GENERAL",
+    "level": "ENTRY",
+    "category": "BEHAVIORAL",
+    "questionText": "Tell me about a time you took ownership of a task that was unclear.",
+    "guidance": "Use STAR: set the situation briefly, explain your responsibility, describe your action, and close with the result.",
+    "expectedResponseStructure": [
+      "Situation",
+      "Task",
+      "Action",
+      "Result"
+    ]
+  },
+  {
+    "id": "behavioral-general-mid-conflict",
+    "role": "GENERAL",
+    "level": "MID",
+    "category": "BEHAVIORAL",
+    "questionText": "Describe a time you disagreed with a teammate and still moved the work forward.",
+    "guidance": "Show how you listened, clarified the trade-off, chose a path, and protected the relationship.",
+    "expectedResponseStructure": [
+      "Context",
+      "Disagreement",
+      "Action",
+      "Outcome"
+    ]
+  },
+  {
+    "id": "leadership-general-senior-influence",
+    "role": "GENERAL",
+    "level": "SENIOR",
+    "category": "LEADERSHIP",
+    "questionText": "Tell me about a time you influenced a decision without direct authority.",
+    "guidance": "Focus on context, stakeholders, evidence, the decision process, and measurable outcome.",
+    "expectedResponseStructure": [
+      "Context",
+      "Stakeholders",
+      "Evidence",
+      "Outcome"
+    ]
+  },
+  {
+    "id": "role-specific-data-entry-insight",
+    "role": "DATA_ANALYST",
+    "level": "ENTRY",
+    "category": "ROLE_SPECIFIC",
+    "questionText": "Tell me about an analysis you did that changed someone's decision.",
+    "guidance": "State the question, data source, method, finding, recommendation, and decision impact.",
+    "expectedResponseStructure": [
+      "Question",
+      "Data",
+      "Method",
+      "Impact"
+    ]
+  },
+  {
+    "id": "role-specific-product-mid-prioritization",
+    "role": "PRODUCT_MANAGER",
+    "level": "MID",
+    "category": "ROLE_SPECIFIC",
+    "questionText": "How do you prioritize two important features when engineering capacity is limited?",
+    "guidance": "Explain user impact, business value, risk, evidence, stakeholder alignment, and the final trade-off.",
+    "expectedResponseStructure": [
+      "User impact",
+      "Business value",
+      "Trade-off",
+      "Decision"
+    ]
+  },
+  {
+    "id": "system-design-backend-senior-retention",
+    "role": "BACKEND_ENGINEER",
+    "level": "SENIOR",
+    "category": "SYSTEM_DESIGN",
+    "questionText": "Design a recording retention system that deletes expired media safely.",
+    "guidance": "Cover data model, scheduled cleanup, storage failures, idempotency, observability, and user-facing guarantees.",
+    "expectedResponseStructure": [
+      "Data model",
+      "Cleanup flow",
+      "Failure handling",
+      "Observability"
+    ]
+  },
+  {
+    "id": "technical-backend-mid-api",
+    "role": "BACKEND_ENGINEER",
+    "level": "MID",
+    "category": "TECHNICAL",
+    "questionText": "How would you design an API endpoint for uploading and streaming user recordings?",
+    "guidance": "Discuss validation, storage keys, metadata, range requests, error handling, and retention.",
+    "expectedResponseStructure": [
+      "Requirements",
+      "API shape",
+      "Storage",
+      "Failure handling"
+    ]
+  },
+  {
+    "id": "technical-frontend-mid-recorder",
+    "role": "FRONTEND_ENGINEER",
+    "level": "MID",
+    "category": "TECHNICAL",
+    "questionText": "How would you build a browser-based video recorder experience?",
+    "guidance": "Mention permissions, MediaRecorder support, device selection, stream cleanup, preview, upload, and accessibility.",
+    "expectedResponseStructure": [
+      "Permissions",
+      "Recording flow",
+      "Cleanup",
+      "Accessibility"
+    ]
+  }
+]

@@ -1,6 +1,5 @@
-build/
-.gradle/
-data/
-*.iml
-.idea/
-.DS_Store
+bin
+data
+.env
+coverage.out
+**/*_test.go

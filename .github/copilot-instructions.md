@@ -1,179 +1,54 @@
-# Repository Copilot Instructions
+# Repository instructions
 
-## Repository Overview
+SpeakBetter has one Go backend in `backend/` and a React/TypeScript frontend in `frontend/`. Preserve the practice → record → review → understand → retry → compare loop and existing interview flows. The original application is recoverable from the `backup-V0` branch. Do not reintroduce an old backend or create a duplicate backend directory.
 
-**SpeakBetter** is a personal communication-practice app, not just a recorder. The core loop to preserve:
+## Stack and structure
 
-Practice -> Record -> Review -> Analyze -> Understand -> Learn -> Record Again -> Compare -> Track Progress.
+- Backend: Go (exact version in `backend/go.mod`), Gin, pgx, PostgreSQL, golang-migrate, standard slog/testing/httptest.
+- Media: `internal/platform/storage.RecordingStore`, local rooted filesystem and AWS SDK v2 S3-compatible private R2 storage.
+- Features: `internal/practice`, `internal/interview`, shared `internal/recording`; entry points in `cmd/api` and `cmd/migrate`.
+- Frontend: React, TypeScript, Vite, HashRouter, React Context, plain CSS, Vitest/Testing Library, oxlint.
+- Local runtime: root `docker-compose.yml`, separate persistent V2 volumes, same-origin nginx API proxy, non-root API/frontend containers.
 
-Users record themselves (webcam + microphone) on a topic, review the attempt, add a manual self-review and track improvement. An **Interview Preparation Portal** follows the same standard: select role/level/category -> select a real question -> read guidance -> record -> preview -> save -> review -> retry -> compare. Nothing requires an AI provider to work; transcription/analysis are optional, disabled by default extension points.
+Keep the modular monolith. Do not create empty packages, speculative tables, a dependency injection framework, or unnecessary infrastructure. Prefer small typed pgx query functions; keep query/scan column order explicit and covered by integration tests.
 
-## Technology Stack
-
-- Backend: Java 21, Spring Boot 3.3.4, Gradle (wrapper), Spring Data JPA, Flyway, Spring Scheduler, Bean Validation
-- Database: PostgreSQL (16 in `docker-compose.yml`)
-- Storage: local filesystem by default; Cloudflare R2 via the AWS SDK v2 S3 client under the `r2` Spring profile
-- Frontend: React 19, TypeScript, Vite, React Router 7, plain CSS (no UI framework), Vitest + React Testing Library, oxlint
-- Containers: Dockerfiles for backend and frontend, `docker-compose.yml` (Docker or Podman)
-- CI/CD: GitHub Actions `deploy-frontend.yml` (GitHub Pages); backend build config for Railway in `backend/nixpacks.toml`
-
-Deliberately not used: Redux, Kafka, Redis, Kubernetes, microservices. Do not introduce them.
-
-## Repository Structure
-
-```
-backend/src/main/java/com/speakbetter/practice/
-  controller/   REST endpoints (thin, no business logic)
-  service/      business logic, question catalog, deterministic interview metrics
-    storage/    RecordingStorage interface + LocalFilesystem / CloudflareR2 implementations
-    analysis/   TranscriptionService / CommunicationAnalysisService (interfaces + disabled providers)
-  repository/   Spring Data JPA repositories
-  entity/  dto/  config/  scheduler/  exception/
-backend/src/main/resources/   application.yml, application-r2.yml, db/migration/V1..V4
-backend/src/test/             unit + integration tests
-frontend/src/                 pages/, components/ (components/review/), state/ (React Context), api/, utils/
-docker-compose.yml            Postgres + backend + frontend
-.github/workflows/            deploy-frontend.yml
-CLAUDE.md                     existing assistant notes for this repo (do not overwrite)
-```
-
-## Architecture
-
-Layered Spring Boot REST API (controller -> service -> repository) plus a React SPA. Notable design points:
-
-- `RecordingStorage` is an interface with two profile-selected implementations; local dev never touches R2 code. Video streaming supports HTTP Range locally; R2 redirects to a short-lived presigned URL.
-- `InterviewSession` has its own table and enums, separate from practice sessions, but stores recording keys compatible with `RecordingStorage`.
-- Retention is one query: the cleanup job selects only sessions with `expires_at < now()`, so nothing is deleted early (default 30 days, cron `0 0 3 * * *`).
-
-## Development Commands
+## Commands
 
 ```bash
-# Backend (needs local Postgres; createdb speakbetter)
-cd backend && ./gradlew bootRun          # http://localhost:8080, Flyway migrates on startup
-cd backend && ./gradlew test             # needs a `speakbetter_test` database (createdb speakbetter_test)
-
-# Frontend
-cd frontend && npm install
-cd frontend && npm run dev               # http://localhost:5173
-cd frontend && npm test                  # Vitest (vitest run)
-cd frontend && npm run build             # tsc -b && vite build
-cd frontend && npm run lint              # oxlint
-
-# Everything via containers
-docker compose up --build -d             # or: podman compose up --build -d
-docker compose down                      # keeps recordings volume; `down -v` deletes data
+cd backend
+go test -race ./...
+go vet ./...
+TEST_DATABASE_URL="$DATABASE_URL" go test -race -count=1 ./...
+go run ./cmd/migrate
+GIN_MODE=release go run ./cmd/api
 ```
 
-If local Postgres needs credentials, export `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` before backend tests.
+Migrations run explicitly, never on normal API startup. An empty database is required on first run; never edit applied SQL or point migrations/tests at an existing production database. Integration tests require an isolated PostgreSQL server with CREATEDB permission and own randomly named test databases. Distinguish a skipped test from a passed integration test.
 
-## Coding Guidelines
+```bash
+cd frontend
+npm ci
+npm test
+npm run lint
+npm run build
+```
 
-Backend (Java/Spring):
-- Constructor injection; keep controllers thin; business logic in services.
-- Use DTOs for API contracts; validate input with Bean Validation; keep the global exception handler as the single error path.
-- Every schema change is a new Flyway migration (`V5__...`); never edit an applied migration.
-- Config comes from `@ConfigurationProperties` (`app.recordings.*`) and environment variables, not constants.
-- Keep backend storage and API contracts stable unless a feature requires backend work.
+From the root, initialize with `sh scripts/setup-v2.sh`, load `.env.v2` with export enabled, then use `docker compose up --build -d` (or `podman compose`). `down` retains volumes; never automatically run `down -v`, prune data, recreate an existing VM, or overwrite environment secrets.
 
-Frontend (React/TypeScript):
-- Follow existing patterns: pages in `pages/`, shared state via React Context in `state/`, API calls only through `api/`.
-- Type everything; avoid `any`. Keep components focused.
-- Keep the existing indigo/violet visual identity, restrained accents and responsive layouts. Do not add visible controls that do nothing.
-- All buttons, links, tabs, form fields and recording controls must be keyboard-accessible; respect `prefers-reduced-motion`.
+## Contracts and implementation
 
-## Testing
+Preserve `/api/practice-sessions`, `/api/interview-questions`, and `/api/interview-sessions`, JSON field casing/nulls, collection arrays, relative media URLs, multipart field names, and status codes. Introduce versioned learning APIs only for implemented features. Keep handlers thin and feature business behavior in methods. Use small consumer-defined interfaces when replacement is useful. Pass request contexts to SQL/storage/provider operations. Bound HTTP bodies, queries, network calls and shutdown. Handle errors explicitly and close rows/files/pools reliably.
 
-- Backend: JUnit 5 + Spring Boot Test under `backend/src/test` (controller integration tests, service tests, storage and interview analysis tests). Integration tests need PostgreSQL.
-- Frontend: Vitest + React Testing Library (`App.test.tsx`, `api/practiceSessionsApi.test.ts`, `utils/*.test.ts`).
-- Add tests for new behavior. Run focused backend tests for interview domain/API/metric changes and the full suite when local Postgres test credentials are available. Run frontend tests, build and lint before finishing UI changes.
+Recording keys must be server-generated and confined to storage. Verify actual container signatures as well as declared MIME, enforce configured request/file caps, remove temporary uploads, support byte ranges, and preserve recordings if analysis fails. Failed database writes must compensate saved media; deletion intent must remain retryable if storage is unavailable. Cleanup must never select future expiry dates.
 
-## API / Data Rules
+No authentication is implemented yet. Loopback development and CORS are not public-deployment authorization. Do not claim private-media access control or production readiness. Never expose recordings, SQL credentials, signed URLs, transcripts or user text in logs. Secrets come from environment/private files only.
 
-- Practice endpoints: `/api/practice-sessions` (POST multipart upload, GET list/one, `/video`, PUT `/review`, DELETE). Interview endpoints: `/api/interview-questions`, `/api/interview-sessions` (create, `/recording`, `/video`, `/review`, DELETE).
-- Deleting a session removes its media and metadata through the same storage abstraction used for practice recordings.
-- Upload limits and allowed MIME types are configured under `app.recordings`.
+## Frontend and learning integrity
 
-## Security
+Keep typed API functions under `frontend/src/api`, shared state in Context, focused functional components, existing indigo styling, responsive layouts and keyboard-accessible controls. Every visible button must perform a real action. Preserve actionable permission/unsupported-browser/network errors and media resource cleanup.
 
-- No authentication layer exists in this codebase; do not claim one. CORS origins come from `CORS_ALLOWED_ORIGINS`.
-- R2 credentials (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`) and AI provider keys come from environment variables only; never commit them.
-- Recordings are personal media: keep retention/deletion behavior intact and never log recording content.
+Never fabricate transcripts, grammar issues, scores, pronunciation, confidence, posture, eye contact or success. Metrics must have actual evidence and explicit unavailable states. Duration is practice time, not English ability. Separate deterministic observations, self-reviews and real provider analysis. Optional providers must fail honestly while manual practice remains usable. Preserve intended meaning and distinguish grammar errors from optional style. Accent differences, including Indian English, are not errors.
 
-## Infrastructure / Deployment
+## Work and attribution
 
-Docker Compose for local full stack; Railway for the backend and Cloudflare R2 for storage (documented in README, `nixpacks.toml`); GitHub Pages for the frontend via `deploy-frontend.yml` (`npm ci`, `npm run build`, custom domain CNAME).
-
-## Change Guidelines
-
-1. Understand the existing implementation first.
-2. Make the smallest coherent change.
-3. Preserve current architecture unless there is a strong reason to change it.
-4. Do not introduce a new library when the existing stack already solves the requirement.
-5. Update tests for behavior changes.
-6. Run relevant tests/build before considering the change complete.
-7. Do not leave commented-out code.
-8. Do not leave TODO placeholders unless explicitly requested.
-9. Do not fabricate implementation status.
-10. Do not claim something was tested unless it was actually executed.
-
-## Code Quality Rules
-
-- Prefer readable code over clever code; avoid unnecessary duplication and abstraction.
-- Follow existing naming conventions; keep methods and components focused.
-- Handle edge cases (permission denied, unsupported browser, oversized upload, missing/corrupted file, backend unreachable) with clean user messages, never raw stack traces.
-- Preserve backward compatibility of stored data and API contracts.
-- Avoid unrelated refactoring during focused changes.
-
-## Git Commit Rules
-
-- Never add a `Co-Authored-By` trailer unless I explicitly request it.
-- Never add Claude, Anthropic, GitHub Copilot, OpenAI, ChatGPT, Codex, Cursor, or any AI tool as an author or co-author.
-- Use only the configured Git `user.name` and `user.email`.
-- Do not mention AI assistance in commit messages.
-- Keep commit messages concise and professional.
-- Do not commit automatically unless I explicitly ask.
-- Do not push automatically unless I explicitly ask.
-- Never force-push unless I explicitly request it.
-- Never rewrite Git history unless I explicitly request it.
-
-## Git Commit Attribution Rules
-
-- Never add a `Co-Authored-By` trailer for an AI system.
-- Never add Claude, Anthropic, GitHub Copilot, OpenAI, ChatGPT, Codex, Cursor, Gemini, Devin, or any AI tool as an author or co-author.
-- Never change Git author/committer identity to an AI account.
-- Use only the configured human Git `user.name` and `user.email`.
-- Do not add “Generated by AI”, “Created with AI”, or similar attribution to commit messages.
-- Keep commit messages focused on the technical change.
-- Do not commit automatically unless explicitly requested.
-- Do not push automatically unless explicitly requested.
-- Never rewrite Git history unless explicitly requested.
-
-## AI Assistant Working Rules
-
-When working in this repository:
-
-- Inspect existing code before proposing architecture changes.
-- Do not assume a feature exists without verifying it.
-- Do not create fake implementations to make UI or tests appear complete.
-- Do not generate random metrics, scores, or placeholder business data unless explicitly requested as test/demo data.
-- Clearly separate verified behavior from assumptions.
-- Prefer completing working vertical slices over creating many unfinished placeholders.
-- Preserve repository conventions.
-- Avoid massive rewrites unless explicitly requested.
-- When fixing a bug, identify the underlying cause where practical.
-- When adding functionality, consider error handling and tests.
-- Never expose secrets, API keys, tokens, or credentials.
-- Never hardcode secrets.
-
-## Repository-Specific Rules (product integrity and privacy)
-
-- **Never fake analysis, scores, percentages, eye contact, posture, confidence, transcript or speech metrics.** Show a metric only when it comes from real stored data, deterministic calculation, documented heuristic logic, real transcript analysis or real AI analysis.
-- If a metric cannot be measured reliably, show an honest state such as "Not enough data", "Analysis unavailable" or "Transcript required for this metric".
-- Separate deterministic metrics (e.g. duration bands, attempt counts, time practiced) from transcript-dependent metrics (word count, words per minute, filler words, STAR structure) and from AI-derived feedback, in both API and UI. Interview duration bands are guidance, not quality scores.
-- Optional transcription/analysis providers stay disabled by default (`AI_TRANSCRIPTION_ENABLED`, `AI_ANALYSIS_ENABLED` = `false`) and must never return fake fallback text or feedback.
-- **Preserve recording data if AI analysis fails.** A failed or unavailable analysis must never delete, block or corrupt a saved recording.
-- **Communication analysis must not judge physical appearance.** Feedback concerns delivery, structure and content only.
-- Transcript, audio markers, video engagement, posture and eye-contact features are presented as unavailable unless a real implementation exists.
-- Coaching language is supportive, professional and specific ("Try...", "Consider...", "Focus next..."); prefer one clear next-practice goal over many suggestions.
-- Dashboard personalization uses actual session history only. Review screens explain any heuristic score methodology.
-- Recording UI: clear, actionable camera/mic permission errors, and always clean up media streams and recorder resources on stop or unmount.
+Read existing code, make small testable changes, explain new Go syntax/packages and update docs/checklists with actual validation. Do not leave placeholder implementations or report tests/deployments that did not run. Preserve user changes. Use only the configured human Git identity. Never add AI authors/co-authors, Co-Authored-By trailers or generated-by attribution. Do not automatically commit/push unless explicitly requested, and never rewrite history or force-push without explicit authorization. Read `CLAUDE.md` for existing attribution rules.
